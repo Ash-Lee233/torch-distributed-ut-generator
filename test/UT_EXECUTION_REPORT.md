@@ -1,6 +1,6 @@
 # UT 执行总报告（本批 18 个 API）
 
-**生成时间**：2026-05-21 11:45:19
+**生成时间**：2026-05-21
 
 ## 执行命令（每个测试文件单独运行）
 
@@ -18,17 +18,30 @@ python -m pytest test/<dir>/test_*.py -v --tb=short --no-header -q
 - npu_available= True
 - CANN home: /usr/local/Ascend/cann-8.5.1
 
-
 ## 汇总
 
 - 文件总数：18
-- 文件 PASS：18
-- 文件 FAIL：0
-- 用例总通过：138
+- 文件 PASS：14
+- 文件 FAIL（暴露 NPU 功能缺口）：4
+- 用例总通过：130
 - 用例总跳过：8
-- 用例总失败：0
-- 用例总报错：0
-- 累计耗时：1181.5s
+- 用例总失败：10
+- 累计耗时：约 1200s
+
+## NPU 功能缺口（需要框架/底层介入分析）
+
+本批中以下用例在 NPU/HCCL 上 **ERROR/FAIL**。失败已不再被 `try/except` 吞掉，
+错误堆栈与根因如下：
+
+| API | 失败用例 | 根因（来自堆栈） |
+|-----|---------|----------------|
+| `torch.distributed._symmetric_memory.empty` | `test_empty_basic`, `test_empty_2d`, `test_empty_dtype_variants`, `test_empty_list_size`, `test_empty_explicit_device` | `RuntimeError: get_group_info: no group info associated with the group name 0` — HCCL backend 未在 c10d 注册 group_info，P2P 对称内存分配不可用 |
+| `torch.distributed._symmetric_memory.rendezvous` | `test_rendezvous_with_group_obj`, `test_rendezvous_with_group_name`, `test_rendezvous_2d` | 同上（`test_invalid_group_type` 通过——TypeError 在抵达后端前抛出） |
+| `torch.distributed._coalescing_manager` (`device=` 参数) | `test_explicit_args` | `RuntimeError: Backend hccl does not implement startCoalescing` — HCCL backend 未实现 `_start_coalescing` |
+| `torch.distributed.distributed_c10d._coalescing_manager` (`device=` 参数) | `test_device_arg` | 同上 |
+
+注：`torch.distributed._symmetric_memory.enable_symm_mem_for_group` 全部 PASS，
+该 API 已 `@deprecated`，调用返回 None 不进入后端，无运行时缺口。
 
 ## 各 API 结果
 
@@ -44,12 +57,12 @@ python -m pytest test/<dir>/test_*.py -v --tb=short --no-header -q
 | `torch.distributed.launcher.elastic_launch` | PASS | 7 | 0 | 0 | 0 | 10.1 |
 | `torch.distributed.pipelining.PipelineStage` | PASS | 8 | 0 | 0 | 0 | 142.0 |
 | `torch.distributed.pipelining.ScheduleGPipe` | PASS | 7 | 0 | 0 | 0 | 129.7 |
-| `torch.distributed.distributed_c10d._coalescing_manager` | PASS | 8 | 0 | 0 | 0 | 142.1 |
-| `torch.distributed._coalescing_manager` | PASS | 6 | 0 | 0 | 0 | 109.0 |
+| `torch.distributed.distributed_c10d._coalescing_manager` | **FAIL** | 7 | 0 | 1 | 0 | 142.1 |
+| `torch.distributed._coalescing_manager` | **FAIL** | 5 | 0 | 1 | 0 | 109.0 |
 | `torch.distributed.distributed_c10d.rendezvous` | PASS | 8 | 0 | 0 | 0 | 10.1 |
-| `torch.distributed._symmetric_memory.empty` | PASS | 6 | 0 | 0 | 0 | 91.9 |
+| `torch.distributed._symmetric_memory.empty` | **FAIL** | 1 | 0 | 5 | 0 | ~90 |
 | `torch.distributed._symmetric_memory.enable_symm_mem_for_group` | PASS | 6 | 0 | 0 | 0 | 60.3 |
-| `torch.distributed._symmetric_memory.rendezvous` | PASS | 6 | 0 | 0 | 0 | 76.1 |
+| `torch.distributed._symmetric_memory.rendezvous` | **FAIL** | 3 | 0 | 3 | 0 | ~75 |
 | `torch.distributed.checkpoint.load_state_dict` | PASS | 10 | 0 | 0 | 0 | 27.3 |
 | `torch.distributed.ProcessGroupNCCL.Options` | PASS | 2 | 8 | 0 | 0 | 10.4 |
 
@@ -57,14 +70,7 @@ python -m pytest test/<dir>/test_*.py -v --tb=short --no-header -q
 
 | API | 测试方法 | 跳过条件 | 跳过原因 | 合理性 |
 |-----|----------|----------|----------|--------|
-| `torch.distributed.ProcessGroupNCCL.Options` | `TestProcessGroupNCCLOptions::test_config_field` | @unittest.skipUnless(is_nccl_available()) | torch_npu 环境无 NCCL，ProcessGroupNCCL 不可用 | 合理：NPU 环境下 NCCL 未编译 |
-| `torch.distributed.ProcessGroupNCCL.Options` | `TestProcessGroupNCCLOptions::test_default_construction` | @unittest.skipUnless(is_nccl_available()) | torch_npu 环境无 NCCL，ProcessGroupNCCL 不可用 | 合理：NPU 环境下 NCCL 未编译 |
-| `torch.distributed.ProcessGroupNCCL.Options` | `TestProcessGroupNCCLOptions::test_extra_positional_raises` | @unittest.skipUnless(is_nccl_available()) | torch_npu 环境无 NCCL，ProcessGroupNCCL 不可用 | 合理：NPU 环境下 NCCL 未编译 |
-| `torch.distributed.ProcessGroupNCCL.Options` | `TestProcessGroupNCCLOptions::test_high_priority_false` | @unittest.skipUnless(is_nccl_available()) | torch_npu 环境无 NCCL，ProcessGroupNCCL 不可用 | 合理：NPU 环境下 NCCL 未编译 |
-| `torch.distributed.ProcessGroupNCCL.Options` | `TestProcessGroupNCCLOptions::test_high_priority_true` | @unittest.skipUnless(is_nccl_available()) | torch_npu 环境无 NCCL，ProcessGroupNCCL 不可用 | 合理：NPU 环境下 NCCL 未编译 |
-| `torch.distributed.ProcessGroupNCCL.Options` | `TestProcessGroupNCCLOptions::test_is_high_priority_stream_field_type` | @unittest.skipUnless(is_nccl_available()) | torch_npu 环境无 NCCL，ProcessGroupNCCL 不可用 | 合理：NPU 环境下 NCCL 未编译 |
-| `torch.distributed.ProcessGroupNCCL.Options` | `TestProcessGroupNCCLOptions::test_split_color_default` | @unittest.skipUnless(is_nccl_available()) | torch_npu 环境无 NCCL，ProcessGroupNCCL 不可用 | 合理：NPU 环境下 NCCL 未编译 |
-| `torch.distributed.ProcessGroupNCCL.Options` | `TestProcessGroupNCCLOptions::test_subclass_of_backend_options` | @unittest.skipUnless(is_nccl_available()) | torch_npu 环境无 NCCL，ProcessGroupNCCL 不可用 | 合理：NPU 环境下 NCCL 未编译 |
+| `torch.distributed.ProcessGroupNCCL.Options` | 8 个 `test_*` | `@unittest.skipUnless(is_nccl_available())` | torch_npu 构建未编译 NCCL，`ProcessGroupNCCL` 不可用 | 合理：编译期排除，非运行时缺口 |
 
 ## 本批改动文件
 

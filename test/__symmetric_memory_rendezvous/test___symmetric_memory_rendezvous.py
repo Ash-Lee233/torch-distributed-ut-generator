@@ -16,17 +16,19 @@ API 签名：
 | 参数类型         | tensor:Tensor；group:ProcessGroup|str                         | 已覆盖：test_invalid_group_type                |
 | 传参与不传参     | 两个参数均为必填                                              | 已覆盖：test_missing_args_raises               |
 | 等价类/边界值    | 1D tensor vs 2D tensor                                        | 已覆盖：test_rendezvous_with_group_obj / test_rendezvous_2d |
-| 正常传参场景     | 返回 _SymmetricMemory 或抛后端未支持错误                       | 已覆盖：test_rendezvous_with_group_obj         |
-| 异常传参场景     | group 类型错误 -> TypeError                                   | 已覆盖：test_invalid_group_type                |
+| 正常传参场景     | 返回 _SymmetricMemory                                         | 已覆盖：test_rendezvous_with_group_obj         |
+| 异常传参场景     | group 类型错误 -> TypeError；不再容忍后端 RuntimeError        | 已覆盖：用例直接 ERROR/FAIL                    |
 | 混合设备类型     | 仅接受单 tensor 输入，无 NPU/CPU 混合场景                      | 未覆盖：API 仅取单 tensor                      |
 
 未覆盖项及原因：
 - 混合设备类型：rendezvous 仅接受单 tensor 输入。
 
-注意：_SymmetricMemory 主要为 CUDA/NCCL/NVSHMEM 实现，NPU 后端上可能不支持；
-     用例容忍 RuntimeError/NotImplementedError。
+注意：_SymmetricMemory 主要为 CUDA/NCCL/NVSHMEM 实现。本测试不再容忍后端未实现错误：
+     若在 NPU/HCCL 上 rendezvous 抛出 RuntimeError/NotImplementedError，
+     用例将直接 ERROR/FAIL，由用户判断是否为框架缺口。
+
 本测试仅验证功能正确性（调用不报错、输出 shape/dtype/类型符合预期），
-     不做精度和数值正确性校验。
+不做精度和数值正确性校验。
 """
 
 import inspect
@@ -53,29 +55,14 @@ def _init_dist_hccl(rank, world_size):
     dist.init_process_group(backend='hccl', rank=rank, world_size=world_size)
 
 
-def _try_rdv(t, group):
-    try:
-        return ('ok', symm_rendezvous(t, group))
-    except (RuntimeError, NotImplementedError, TypeError) as e:
-        return ('err', e)
-
-
 def _test_rendezvous_with_group_obj(rank, world_size, device_name):
     """rendezvous accepts a ProcessGroup object."""
     _init_dist_hccl(rank, world_size)
     try:
         dev = torch.device(f'{device_name}:{rank}')
-        try:
-            t = symm_empty(8, device=dev)
-        except (RuntimeError, NotImplementedError):
-            t = torch.empty(8, device=dev)
-
-        group = dist.group.WORLD
-        status, val = _try_rdv(t, group)
-        if status == 'ok':
-            assert val is not None
-        else:
-            assert isinstance(val, (RuntimeError, NotImplementedError, TypeError))
+        t = symm_empty(8, device=dev)
+        sm = symm_rendezvous(t, dist.group.WORLD)
+        assert sm is not None
         dist.barrier()
     finally:
         if dist.is_initialized():
@@ -87,17 +74,10 @@ def _test_rendezvous_with_group_name(rank, world_size, device_name):
     _init_dist_hccl(rank, world_size)
     try:
         dev = torch.device(f'{device_name}:{rank}')
-        try:
-            t = symm_empty(8, device=dev)
-        except (RuntimeError, NotImplementedError):
-            t = torch.empty(8, device=dev)
-
+        t = symm_empty(8, device=dev)
         group_name = dist.group.WORLD.group_name
-        status, val = _try_rdv(t, group_name)
-        if status == 'ok':
-            assert val is not None
-        else:
-            assert isinstance(val, (RuntimeError, NotImplementedError, TypeError))
+        sm = symm_rendezvous(t, group_name)
+        assert sm is not None
         dist.barrier()
     finally:
         if dist.is_initialized():
@@ -105,20 +85,13 @@ def _test_rendezvous_with_group_name(rank, world_size, device_name):
 
 
 def _test_rendezvous_2d(rank, world_size, device_name):
-    """rendezvous works with 2D tensors when allocation supported."""
+    """rendezvous works with 2D tensors."""
     _init_dist_hccl(rank, world_size)
     try:
         dev = torch.device(f'{device_name}:{rank}')
-        try:
-            t = symm_empty(2, 4, device=dev)
-        except (RuntimeError, NotImplementedError):
-            t = torch.empty(2, 4, device=dev)
-
-        status, val = _try_rdv(t, dist.group.WORLD)
-        if status == 'ok':
-            assert val is not None
-        else:
-            assert isinstance(val, (RuntimeError, NotImplementedError, TypeError))
+        t = symm_empty(2, 4, device=dev)
+        sm = symm_rendezvous(t, dist.group.WORLD)
+        assert sm is not None
         dist.barrier()
     finally:
         if dist.is_initialized():

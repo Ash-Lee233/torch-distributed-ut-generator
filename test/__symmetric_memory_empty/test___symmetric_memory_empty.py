@@ -18,16 +18,18 @@ API 签名：
 | 传参与不传参     | dtype/device 默认 None vs 显式                               | 已覆盖：test_empty_basic / test_empty_explicit_device |
 | 等价类/边界值    | 单元素；多维                                                  | 已覆盖：test_empty_basic / test_empty_2d       |
 | 正常传参场景     | 返回 torch.Tensor，shape/dtype/device 符合预期               | 已覆盖：test_empty_basic                       |
-| 异常传参场景     | 在不支持的后端（NPU）上可能抛 RuntimeError；用例容忍此情况   | 已覆盖：test_empty_basic（带 expected error 路径） |
+| 异常传参场景     | 用例不再容忍错误；NPU/HCCL 下若 API 未实现，用例将 ERROR     | 已覆盖：失败路径直接暴露                       |
 | 混合设备类型     | 该 API 仅返回单 Tensor，device 由参数指定，无多 Tensor 输入   | 未覆盖：API 无多张量输入                       |
 
 未覆盖项及原因：
 - 混合设备类型：empty 只生成单个 Tensor，无 NPU/CPU 混合输入路径。
 
-注意：_SymmetricMemory 主要为 CUDA/NCCL/NVSHMEM 实现，在 NPU 上 P2P 分配可能未实现。
-     本测试在执行失败时容忍 RuntimeError/NotImplementedError，仅校验签名与基础行为。
+注意：_SymmetricMemory 主要为 CUDA/NCCL/NVSHMEM 实现。本测试不再容忍后端未实现错误：
+     若在 NPU/HCCL 上 P2P 分配抛出 RuntimeError/NotImplementedError，
+     用例将直接 ERROR/FAIL，由用户判断是否为框架缺口。
+
 本测试仅验证功能正确性（调用不报错、输出 shape/dtype/类型符合预期），
-     不做精度和数值正确性校验。
+不做精度和数值正确性校验。
 """
 
 import inspect
@@ -51,28 +53,14 @@ def _init_dist_hccl(rank, world_size):
     dist.init_process_group(backend='hccl', rank=rank, world_size=world_size)
 
 
-def _try_empty(*args, **kwargs):
-    """Call symm_empty; return ('ok', tensor) or ('err', exception)."""
-    try:
-        t = symm_empty(*args, **kwargs)
-        return ('ok', t)
-    except (RuntimeError, NotImplementedError, ValueError, TypeError) as e:
-        return ('err', e)
-
-
 def _test_empty_basic(rank, world_size, device_name):
-    """empty(8) with default dtype on NPU; tolerate backend-not-supported error."""
+    """empty(8) returns a 1D tensor with the expected shape/device."""
     _init_dist_hccl(rank, world_size)
     try:
         dev = torch.device(f'{device_name}:{rank}')
-        status, val = _try_empty(8, device=dev)
-        if status == 'ok':
-            assert val.shape == torch.Size([8])
-            assert val.device.type == device_name
-        else:
-            # Backend doesn't support P2P alloc on NPU; assert it's a Runtime/NotImpl error
-            assert isinstance(val, (RuntimeError, NotImplementedError)), \
-                f"Unexpected error type: {type(val)}"
+        t = symm_empty(8, device=dev)
+        assert t.shape == torch.Size([8]), f"Unexpected shape: {t.shape}"
+        assert t.device.type == device_name, f"Unexpected device: {t.device}"
         dist.barrier()
     finally:
         if dist.is_initialized():
@@ -80,15 +68,12 @@ def _test_empty_basic(rank, world_size, device_name):
 
 
 def _test_empty_2d(rank, world_size, device_name):
-    """empty(4, 8) shape preserved when allocation succeeds."""
+    """empty(4, 8) preserves a 2D shape."""
     _init_dist_hccl(rank, world_size)
     try:
         dev = torch.device(f'{device_name}:{rank}')
-        status, val = _try_empty(4, 8, device=dev)
-        if status == 'ok':
-            assert val.shape == torch.Size([4, 8])
-        else:
-            assert isinstance(val, (RuntimeError, NotImplementedError))
+        t = symm_empty(4, 8, device=dev)
+        assert t.shape == torch.Size([4, 8]), f"Unexpected shape: {t.shape}"
         dist.barrier()
     finally:
         if dist.is_initialized():
@@ -96,16 +81,13 @@ def _test_empty_2d(rank, world_size, device_name):
 
 
 def _test_empty_dtype_variants(rank, world_size, device_name):
-    """empty accepts a range of dtypes."""
+    """empty accepts float32 / float16 / int32 dtypes."""
     _init_dist_hccl(rank, world_size)
     try:
         dev = torch.device(f'{device_name}:{rank}')
         for dt in (torch.float32, torch.float16, torch.int32):
-            status, val = _try_empty(4, dtype=dt, device=dev)
-            if status == 'ok':
-                assert val.dtype == dt
-            else:
-                assert isinstance(val, (RuntimeError, NotImplementedError))
+            t = symm_empty(4, dtype=dt, device=dev)
+            assert t.dtype == dt, f"Expected dtype {dt}, got {t.dtype}"
         dist.barrier()
     finally:
         if dist.is_initialized():
@@ -117,11 +99,8 @@ def _test_empty_list_size(rank, world_size, device_name):
     _init_dist_hccl(rank, world_size)
     try:
         dev = torch.device(f'{device_name}:{rank}')
-        status, val = _try_empty([4, 8], device=dev)
-        if status == 'ok':
-            assert val.shape == torch.Size([4, 8])
-        else:
-            assert isinstance(val, (RuntimeError, NotImplementedError))
+        t = symm_empty([4, 8], device=dev)
+        assert t.shape == torch.Size([4, 8]), f"Unexpected shape: {t.shape}"
         dist.barrier()
     finally:
         if dist.is_initialized():
@@ -129,13 +108,13 @@ def _test_empty_list_size(rank, world_size, device_name):
 
 
 def _test_empty_explicit_device(rank, world_size, device_name):
-    """empty accepts device as torch.device or string."""
+    """empty accepts device as torch.device object or string, both succeed."""
     _init_dist_hccl(rank, world_size)
     try:
-        s1, _ = _try_empty(4, device=f'{device_name}:{rank}')
-        s2, _ = _try_empty(4, device=torch.device(f'{device_name}:{rank}'))
-        # Either both ok, or both fail consistently
-        assert s1 == s2, f"Inconsistent results: {s1} vs {s2}"
+        t1 = symm_empty(4, device=f'{device_name}:{rank}')
+        t2 = symm_empty(4, device=torch.device(f'{device_name}:{rank}'))
+        assert t1.shape == torch.Size([4])
+        assert t2.shape == torch.Size([4])
         dist.barrier()
     finally:
         if dist.is_initialized():

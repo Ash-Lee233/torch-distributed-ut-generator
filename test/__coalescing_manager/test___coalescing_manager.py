@@ -67,17 +67,16 @@ def _test_default(rank, world_size, device_name):
 
 
 def _test_explicit_args(rank, world_size, device_name):
-    """All keyword args explicitly passed; tolerate HCCL startCoalescing miss."""
+    """All keyword args explicitly passed including device=; expect normal operation.
+    No error tolerance: if HCCL backend does not implement this path, the test
+    will ERROR/FAIL so the framework gap is visible."""
     _init_dist_hccl(rank, world_size)
     try:
         dev = torch.device(f'{device_name}:{rank}')
         t = torch.ones(8, device=dev)
-        try:
-            with _coalescing_manager(group=dist.group.WORLD, device=dev, async_ops=False):
-                dist.all_reduce(t)
-        except RuntimeError as e:
-            assert "startCoalescing" in str(e) or "coalesc" in str(e).lower(), \
-                f"Unexpected RuntimeError: {e}"
+        with _coalescing_manager(group=dist.group.WORLD, device=dev, async_ops=False):
+            dist.all_reduce(t)
+        assert t.shape == torch.Size([8])
         dist.barrier()
     finally:
         if dist.is_initialized():

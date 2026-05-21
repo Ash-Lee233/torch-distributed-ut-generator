@@ -109,18 +109,16 @@ def _test_async_ops_true(rank, world_size, device_name):
 
 
 def _test_device_arg(rank, world_size, device_name):
-    """Passing device kwarg: HCCL may not implement startCoalescing; tolerate."""
+    """Pass device= kwarg; expect normal operation. No error tolerance:
+    if HCCL backend does not implement startCoalescing, the test will
+    ERROR/FAIL so the framework gap is visible."""
     _init_dist_hccl(rank, world_size)
     try:
         dev = torch.device(f'{device_name}:{rank}')
         t = torch.ones(8, device=dev)
-        try:
-            with _coalescing_manager(device=dev):
-                dist.all_reduce(t)
-        except RuntimeError as e:
-            # HCCL backend does not implement startCoalescing — accepted.
-            assert "startCoalescing" in str(e) or "coalesc" in str(e).lower(), \
-                f"Unexpected RuntimeError: {e}"
+        with _coalescing_manager(device=dev):
+            dist.all_reduce(t)
+        assert t.shape == torch.Size([8])
         dist.barrier()
     finally:
         if dist.is_initialized():
