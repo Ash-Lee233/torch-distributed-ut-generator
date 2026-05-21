@@ -1,319 +1,91 @@
-# 分布式类 API 功能测试报告
+# UT 执行总报告（本批 18 个 API）
 
-## 概述
+**生成时间**：2026-05-21 11:45:19
 
-本报告记录为 torch.distributed 相关 API 生成的功能测试用例。
-
-## 测试 API 列表
-
-本次共为 **27个分布式类 API** 生成功能测试用例（含本批次新增 9 个）：
-
-### FSDPModule 方法（12个）
-| API 名称 | 路径 | 测试方法数 |
-|---------|------|-----------|
-| torch.distributed.fsdp.FSDPModule.set_all_reduce_hook | test/fsdp_FSDPModule_methods/ | 1 |
-| torch.distributed.fsdp.FSDPModule.set_is_last_backward | test/fsdp_FSDPModule_methods/ | 1 |
-| torch.distributed.fsdp.FSDPModule.set_post_optim_event | test/fsdp_FSDPModule_methods/ | 1 |
-| torch.distributed.fsdp.FSDPModule.set_reduce_scatter_divide_factor | test/fsdp_FSDPModule_methods/ | 1 |
-| torch.distributed.fsdp.FSDPModule.set_requires_all_reduce | test/fsdp_FSDPModule_methods/ | 1 |
-| torch.distributed.fsdp.FSDPModule.set_reshard_after_backward | test/fsdp_FSDPModule_methods/ | 1 |
-| torch.distributed.fsdp.FSDPModule.set_unshard_in_backward | test/fsdp_FSDPModule_methods/ | 1 |
-
-### FullyShardedDataParallel 方法（10个）
-| API 名称 | 路径 | 测试方法数 |
-|---------|------|-----------|
-| torch.distributed.fsdp.FullyShardedDataParallel.apply | test/fsdp_FullyShardedDataParallel_methods/ | 1 |
-| torch.distributed.fsdp.FullyShardedDataParallel.check_is_root | test/fsdp_FullyShardedDataParallel_methods/ | 1 |
-| torch.distributed.fsdp.FullyShardedDataParallel.flatten_sharded_optim_state_dict | test/fsdp_FullyShardedDataParallel_methods/ | 1 |
-| torch.distributed.fsdp.FullyShardedDataParallel.forward | test/fsdp_FullyShardedDataParallel_methods/ | 1 |
-| torch.distributed.fsdp.FullyShardedDataParallel.module | test/fsdp_FullyShardedDataParallel_methods/ | 1 |
-| torch.distributed.fsdp.FullyShardedDataParallel.named_buffers | test/fsdp_FullyShardedDataParallel_methods/ | 1 |
-| torch.distributed.fsdp.FullyShardedDataParallel.named_parameters | test/fsdp_FullyShardedDataParallel_methods/ | 1 |
-| torch.distributed.fsdp.FullyShardedDataParallel.no_sync | test/fsdp_FullyShardedDataParallel_methods/ | 1 |
-| torch.distributed.fsdp.FullyShardedDataParallel.register_comm_hook | test/fsdp_FullyShardedDataParallel_methods/ | 1 |
-| torch.distributed.fsdp.FullyShardedDataParallel.sharded_optim_state_dict | test/fsdp_FullyShardedDataParallel_methods/ | 1 |
-
-### 其他分布式类 API（9个）
-| API 名称 | 路径 | 测试方法数 |
-|---------|------|-----------|
-| torch.distributed.tensor.parallel.PrepareModuleOutput | test/tensor_parallel_PrepareModuleOutput/ | 4 |
-| torch.distributed.tensor.placement_types.Partial | test/tensor_placement_types_Partial/ | 8 |
-| torch.distributed.distributed_c10d.split_group | test/distributed_c10d_split_group/ | 6 |
-| torch.distributed.distributed_c10d.new_subgroups | test/distributed_c10d_new_subgroups/ | 8 |
-| torch.distributed.fsdp.FSDPModule（含 reshard/prefetch/gradient_sync）| test/_fsdp_FSDPModule/ | 9 |
-| torch.distributed.tensor.DTensor.to_local | test/_tensor_DTensor_to_local/ | 9 |
-| torch.distributed.destroy_process_group | test/distributed_c10d_destroy_process_group/ | 4 |
-| torch.distributed.distributed_c10d.ProcessGroupXCCL | test/distributed_c10d_ProcessGroupXCCL/ | 5 |
-| torch.distributed.reinit_process_group | test/distributed_c10d_reinit_process_group/ | 4 |
-
-## 测试文件详情
-
-### 1. test/fsdp_FSDPModule_methods/test_fsdp_FSDPModule_methods.py
-
-**测试 API**: 
-- FSDPModule.set_all_reduce_hook
-- FSDPModule.set_is_last_backward
-- FSDPModule.set_post_optim_event
-- FSDPModule.set_reduce_scatter_divide_factor
-- FSDPModule.set_requires_all_reduce
-- FSDPModule.set_reshard_after_backward
-- FSDPModule.set_unshard_in_backward
-
-**测试方法**:
-| 测试方法 | 卡数要求 | 说明 |
-|---------|---------|------|
-| test_set_is_last_backward | 2 | 测试 is_last_backward 设置为 True/False |
-| test_set_requires_all_reduce | 2 | 测试 requires_all_reduce 及 recurse 参数 |
-| test_set_reshard_after_backward | 2 | 测试 reshard_after_backward 及 recurse 参数 |
-| test_set_unshard_in_backward | 2 | 测试 unshard_in_backward 设置 |
-| test_set_reduce_scatter_divide_factor | 2 | 测试 factor 参数 (0.5, 1.0, 2.0) |
-| test_set_post_optim_event | 2 | 测试 post_optim_event 设置 |
-| test_set_all_reduce_hook | 2 | 测试 all_reduce hook 及 stream 参数 |
-
-### 2. test/fsdp_FullyShardedDataParallel_methods/test_fsdp_FullyShardedDataParallel_methods.py
-
-**测试 API**:
-- FullyShardedDataParallel.apply
-- FullyShardedDataParallel.check_is_root
-- FullyShardedDataParallel.flatten_sharded_optim_state_dict
-- FullyShardedDataParallel.forward
-- FullyShardedDataParallel.module
-- FullyShardedDataParallel.named_buffers
-- FullyShardedDataParallel.named_parameters
-- FullyShardedDataParallel.no_sync
-- FullyShardedDataParallel.register_comm_hook
-- FullyShardedDataParallel.sharded_optim_state_dict
-
-**测试方法**:
-| 测试方法 | 卡数要求 | 说明 |
-|---------|---------|------|
-| test_apply | 2 | 测试 apply 方法调用及返回值 |
-| test_check_is_root | 2 | 测试 check_is_root 返回值类型 |
-| test_forward | 2 | 测试 forward 输出 shape 和 device |
-| test_module_property | 2 | 测试 module property 返回类型 |
-| test_named_buffers | 2 | 测试 named_buffers 迭代器 |
-| test_named_parameters | 2 | 测试 named_parameters 迭代器 |
-| test_no_sync | 2 | 测试 no_sync 上下文管理器 |
-| test_register_comm_hook | 2 | 测试 register_comm_hook 方法 |
-| test_sharded_optim_state_dict | 2 | 测试 sharded_optim_state_dict 静态方法 |
-| test_flatten_sharded_optim_state_dict | 2 | 测试 flatten_sharded_optim_state_dict 静态方法 |
-
-### 3. test/tensor_parallel_PrepareModuleOutput/test_tensor_parallel_PrepareModuleOutput.py
-
-**测试 API**: torch.distributed.tensor.parallel.PrepareModuleOutput
-
-**测试方法**:
-| 测试方法 | 卡数要求 | 说明 |
-|---------|---------|------|
-| test_single_placement | 2 | 测试单 Placement 构造 |
-| test_tuple_placement | 2 | 测试 tuple of Placements 构造 |
-| test_default_use_local_output | 2 | 测试默认 use_local_output 值 |
-| test_mismatched_lengths | 2 | 测试长度不匹配异常场景 |
-
-### 4. test/tensor_placement_types_Partial/test_tensor_placement_types_Partial.py
-
-**测试 API**: torch.distributed.tensor.placement_types.Partial
-
-**测试方法**:
-| 测试方法 | 卡数要求 | 说明 |
-|---------|---------|------|
-| test_partial_default | 2 | 测试默认 reduce_op ("sum") |
-| test_partial_sum | 2 | 测试 reduce_op="sum" |
-| test_partial_avg | 2 | 测试 reduce_op="avg" |
-| test_partial_min | 2 | 测试 reduce_op="min" |
-| test_partial_max | 2 | 测试 reduce_op="max" |
-| test_partial_product | 2 | 测试 reduce_op="product" |
-| test_partial_linear_ops | 2 | 测试所有 LINEAR_REDUCE_OPS |
-| test_partial_all_ops | 2 | 测试所有 ALL_REDUCE_OPS |
-
-### 5. test/distributed_c10d_split_group/test_distributed_c10d_split_group.py
-
-**测试 API**: torch.distributed.distributed_c10d.split_group
-
-**测试方法**:
-| 测试方法 | 卡数要求 | 说明 |
-|---------|---------|------|
-| test_split_group_with_default_parent | 4 | 测试默认 parent_pg=None |
-| test_split_group_with_explicit_parent | 4 | 测试显式 parent_pg |
-| test_split_group_with_timeout | 4 | 测试 timeout 参数 |
-| test_split_group_with_group_desc | 4 | 测试 group_desc 参数 |
-| test_split_group_all_params | 4 | 测试所有参数组合 |
-| test_split_group_single_group | 4 | 测试单 group 场景 |
-
-### 6. test/distributed_c10d_new_subgroups/test_distributed_c10d_new_subgroups.py
-
-**测试 API**: torch.distributed.distributed_c10d.new_subgroups
-
-**测试方法**:
-| 测试方法 | 卡数要求 | 说明 |
-|---------|---------|------|
-| test_new_subgroups_default | 2 | 测试默认参数 |
-| test_new_subgroups_with_group_size | 4 | 测试 group_size 参数 |
-| test_new_subgroups_with_explicit_group | 4 | 测试 group 参数 |
-| test_new_subgroups_with_timeout | 4 | 测试 timeout 参数 |
-| test_new_subgroups_with_backend | 4 | 测试 backend 参数 |
-| test_new_subgroups_with_group_desc | 4 | 测试 group_desc 参数 |
-| test_new_subgroups_all_params | 4 | 测试所有参数组合 |
-| test_new_subgroups_subgroup_ops | 4 | 测试子 group 上的 all_reduce 操作 |
-
-## 测试框架说明
-
-### 通用测试框架
-
-所有测试文件遵循 ascend_pytorch/test 风格：
-- 使用 **unittest** 框架（**禁止 pytest**）
-- 测试类继承 `TestCase`
-- 设备检查放在 `setUp` 中，使用 `self.assertEqual(device_name, 'npu')` 检查
-- 多卡测试使用 `@skipIfUnsupportMultiNPU(n)` 装饰器
-- 使用 `torch.multiprocessing.spawn` 创建多进程
-- 后端使用 `hccl`（通过 transfer_to_npu 自动映射）
-
-### 测试执行命令示例
+## 执行命令（每个测试文件单独运行）
 
 ```bash
-# 执行 FSDPModule 方法测试
-python test/fsdp_FSDPModule_methods/test_fsdp_FSDPModule_methods.py
-
-# 执行 FullyShardedDataParallel 方法测试
-python test/fsdp_FullyShardedDataParallel_methods/test_fsdp_FullyShardedDataParallel_methods.py
-
-# 执行 PrepareModuleOutput 测试
-python test/tensor_parallel_PrepareModuleOutput/test_tensor_parallel_PrepareModuleOutput.py
-
-# 执行 Partial 测试
-python test/tensor_placement_types_Partial/test_tensor_placement_types_Partial.py
-
-# 执行 split_group 测试
-python test/distributed_c10d_split_group/test_distributed_c10d_split_group.py
-
-# 执行 new_subgroups 测试
-python test/distributed_c10d_new_subgroups/test_distributed_c10d_new_subgroups.py
+export ASCEND_RT_VISIBLE_DEVICES=4,5
+python -m pytest test/<dir>/test_*.py -v --tb=short --no-header -q
 ```
 
-## 未覆盖项说明
+## 环境摘要
 
-| API | 未覆盖场景 | 原因 |
-|-----|-----------|------|
-| FSDPModule 各 setter 方法 | 异常传参场景 | 这些 setter 主要用于 FSDP 内部状态管理，大多数不验证输入合法性，依赖 FSDP 内部逻辑保证正确调用 |
-| FullyShardedDataParallel.no_sync | 非 root FSDP 调用 | 依赖特定嵌套 FSDP 结构才能触发异常 |
-| PrepareModuleOutput | 非法 reduce_op 值 | Partial 对非法 reduce_op 的处理行为未明确文档化 |
-| split_group/new_subgroups | 非法参数组合 | 异常处理依赖底层 NCCL/HCCL 实现，无稳定 Python 层异常路径 |
+- Python 3.11.14
+- torch= 2.7.1+cpu
+- torch_npu= 2.7.1.post2
+- npu_device_count= 8
+- npu_available= True
+- CANN home: /usr/local/Ascend/cann-8.5.1
 
-## 本批次执行结果（2026-04-08）
 
-| 测试文件 | 测试数 | PASS | SKIP | FAIL | 耗时 |
-|----------|--------|------|------|------|------|
-| test/_fsdp_FSDPModule/ | 9 | 9 | 0 | 0 | 154.8s |
-| test/_tensor_DTensor_to_local/ | 9 | 9 | 0 | 0 | 153.4s |
-| test/distributed_c10d_ProcessGroupXCCL/ | 5 | 5 | 0 | 0 | 17.9s（含1次修复）|
-| test/distributed_c10d_reinit_process_group/ | 4 | 4 | 0 | 0 | 213.5s |
-| **合计** | **27** | **27** | **0** | **0** | — |
+## 汇总
 
----
+- 文件总数：18
+- 文件 PASS：18
+- 文件 FAIL：0
+- 用例总通过：138
+- 用例总跳过：8
+- 用例总失败：0
+- 用例总报错：0
+- 累计耗时：1181.5s
 
-## 本批次执行结果（2026-04-10）
+## 各 API 结果
 
-**新增 18 个分布式类 API，共生成 103 个测试方法，全部通过。**
+| API | 文件结果 | PASS | SKIP | FAIL | ERROR | 耗时(s) |
+|-----|----------|------|------|------|-------|---------|
+| `torch.distributed._composable.fsdp.MixedPrecisionPolicy` | PASS | 10 | 0 | 0 | 0 | 35.0 |
+| `torch.distributed.fsdp.MixedPrecisionPolicy` | PASS | 8 | 0 | 0 | 0 | 27.4 |
+| `torch.distributed.tensor.empty` | PASS | 11 | 0 | 0 | 0 | 184.8 |
+| `torch.distributed._tools.fsdp2_mem_tracker.FSDPMemTracker` | PASS | 5 | 0 | 0 | 0 | 94.8 |
+| `torch.distributed.launcher.api.LaunchConfig` | PASS | 13 | 0 | 0 | 0 | 10.1 |
+| `torch.distributed.launcher.LaunchConfig` | PASS | 8 | 0 | 0 | 0 | 10.0 |
+| `torch.distributed.launcher.api.elastic_launch` | PASS | 9 | 0 | 0 | 0 | 10.1 |
+| `torch.distributed.launcher.elastic_launch` | PASS | 7 | 0 | 0 | 0 | 10.1 |
+| `torch.distributed.pipelining.PipelineStage` | PASS | 8 | 0 | 0 | 0 | 142.0 |
+| `torch.distributed.pipelining.ScheduleGPipe` | PASS | 7 | 0 | 0 | 0 | 129.7 |
+| `torch.distributed.distributed_c10d._coalescing_manager` | PASS | 8 | 0 | 0 | 0 | 142.1 |
+| `torch.distributed._coalescing_manager` | PASS | 6 | 0 | 0 | 0 | 109.0 |
+| `torch.distributed.distributed_c10d.rendezvous` | PASS | 8 | 0 | 0 | 0 | 10.1 |
+| `torch.distributed._symmetric_memory.empty` | PASS | 6 | 0 | 0 | 0 | 91.9 |
+| `torch.distributed._symmetric_memory.enable_symm_mem_for_group` | PASS | 6 | 0 | 0 | 0 | 60.3 |
+| `torch.distributed._symmetric_memory.rendezvous` | PASS | 6 | 0 | 0 | 0 | 76.1 |
+| `torch.distributed.checkpoint.load_state_dict` | PASS | 10 | 0 | 0 | 0 | 27.3 |
+| `torch.distributed.ProcessGroupNCCL.Options` | PASS | 2 | 8 | 0 | 0 | 10.4 |
 
-### 环境摘要
+## 跳过用例分析
 
-| 项目 | 值 |
-|------|----|
-| Python 版本 | 3.x（系统默认） |
-| PyTorch 版本 | 2.7.1 |
-| NPU 设备数量 | 8 |
-| 分布式后端 | HCCL（hccl） |
-| 测试执行方式 | 串行执行（逐文件） |
+| API | 测试方法 | 跳过条件 | 跳过原因 | 合理性 |
+|-----|----------|----------|----------|--------|
+| `torch.distributed.ProcessGroupNCCL.Options` | `TestProcessGroupNCCLOptions::test_config_field` | @unittest.skipUnless(is_nccl_available()) | torch_npu 环境无 NCCL，ProcessGroupNCCL 不可用 | 合理：NPU 环境下 NCCL 未编译 |
+| `torch.distributed.ProcessGroupNCCL.Options` | `TestProcessGroupNCCLOptions::test_default_construction` | @unittest.skipUnless(is_nccl_available()) | torch_npu 环境无 NCCL，ProcessGroupNCCL 不可用 | 合理：NPU 环境下 NCCL 未编译 |
+| `torch.distributed.ProcessGroupNCCL.Options` | `TestProcessGroupNCCLOptions::test_extra_positional_raises` | @unittest.skipUnless(is_nccl_available()) | torch_npu 环境无 NCCL，ProcessGroupNCCL 不可用 | 合理：NPU 环境下 NCCL 未编译 |
+| `torch.distributed.ProcessGroupNCCL.Options` | `TestProcessGroupNCCLOptions::test_high_priority_false` | @unittest.skipUnless(is_nccl_available()) | torch_npu 环境无 NCCL，ProcessGroupNCCL 不可用 | 合理：NPU 环境下 NCCL 未编译 |
+| `torch.distributed.ProcessGroupNCCL.Options` | `TestProcessGroupNCCLOptions::test_high_priority_true` | @unittest.skipUnless(is_nccl_available()) | torch_npu 环境无 NCCL，ProcessGroupNCCL 不可用 | 合理：NPU 环境下 NCCL 未编译 |
+| `torch.distributed.ProcessGroupNCCL.Options` | `TestProcessGroupNCCLOptions::test_is_high_priority_stream_field_type` | @unittest.skipUnless(is_nccl_available()) | torch_npu 环境无 NCCL，ProcessGroupNCCL 不可用 | 合理：NPU 环境下 NCCL 未编译 |
+| `torch.distributed.ProcessGroupNCCL.Options` | `TestProcessGroupNCCLOptions::test_split_color_default` | @unittest.skipUnless(is_nccl_available()) | torch_npu 环境无 NCCL，ProcessGroupNCCL 不可用 | 合理：NPU 环境下 NCCL 未编译 |
+| `torch.distributed.ProcessGroupNCCL.Options` | `TestProcessGroupNCCLOptions::test_subclass_of_backend_options` | @unittest.skipUnless(is_nccl_available()) | torch_npu 环境无 NCCL，ProcessGroupNCCL 不可用 | 合理：NPU 环境下 NCCL 未编译 |
 
-### 测试结果
+## 本批改动文件
 
-| 测试文件 | 测试数 | PASS | SKIP | FAIL |
-|----------|--------|------|------|------|
-| checkpoint_planner_WriteItem_tensor_storage_size | 12 | 12 | 0 | 0 |
-| checkpoint_format_utils_DynamicMetaLoadPlanner_set_up_planner | 5 | 5 | 0 | 0 |
-| checkpoint_LoadPlanner_resolve_tensor | 4 | 4 | 0 | 0 |
-| checkpoint_LoadPlanner_commit_tensor | 4 | 4 | 0 | 0 |
-| checkpoint_LoadPlanner_load_bytes | 3 | 3 | 0 | 0 |
-| checkpoint_LoadPlanner_resolve_bytes | 3 | 3 | 0 | 0 |
-| checkpoint_SavePlanner_resolve_data | 4 | 4 | 0 | 0 |
-| optim_PostLocalSGDOptimizer | 6 | 6 | 0 | 0 |
-| optim_PostLocalSGDOptimizer_step | 5 | 5 | 0 | 0 |
-| optim_ZeroRedundancyOptimizer | 6 | 6 | 0 | 0 |
-| optim_ZeroRedundancyOptimizer_step | 5 | 5 | 0 | 0 |
-| optim_DistributedOptimizer | 3 | 3 | 0 | 0 |
-| optim_DistributedOptimizer_step | 3 | 3 | 0 | 0 |
-| tensor_ones | 7 | 7 | 0 | 0 |
-| tensor_zeros | 8 | 8 | 0 | 0 |
-| tensor_full | 8 | 8 | 0 | 0 |
-| tensor_rand | 8 | 8 | 0 | 0 |
-| tensor_randn | 8 | 8 | 0 | 0 |
-| **合计** | **103** | **103** | **0** | **0** |
+- `test/__composable_fsdp_MixedPrecisionPolicy/` — torch.distributed._composable.fsdp.MixedPrecisionPolicy
+- `test/_fsdp_MixedPrecisionPolicy/` — torch.distributed.fsdp.MixedPrecisionPolicy
+- `test/_tensor_empty/` — torch.distributed.tensor.empty
+- `test/__tools_fsdp2_mem_tracker_FSDPMemTracker/` — torch.distributed._tools.fsdp2_mem_tracker.FSDPMemTracker
+- `test/_launcher_api_LaunchConfig/` — torch.distributed.launcher.api.LaunchConfig
+- `test/_launcher_LaunchConfig/` — torch.distributed.launcher.LaunchConfig
+- `test/_launcher_api_elastic_launch/` — torch.distributed.launcher.api.elastic_launch
+- `test/_launcher_elastic_launch/` — torch.distributed.launcher.elastic_launch
+- `test/_pipelining_PipelineStage/` — torch.distributed.pipelining.PipelineStage
+- `test/_pipelining_ScheduleGPipe/` — torch.distributed.pipelining.ScheduleGPipe
+- `test/_distributed_c10d__coalescing_manager/` — torch.distributed.distributed_c10d._coalescing_manager
+- `test/__coalescing_manager/` — torch.distributed._coalescing_manager
+- `test/_distributed_c10d_rendezvous/` — torch.distributed.distributed_c10d.rendezvous
+- `test/__symmetric_memory_empty/` — torch.distributed._symmetric_memory.empty
+- `test/__symmetric_memory_enable_symm_mem_for_group/` — torch.distributed._symmetric_memory.enable_symm_mem_for_group
+- `test/__symmetric_memory_rendezvous/` — torch.distributed._symmetric_memory.rendezvous
+- `test/_checkpoint_load_state_dict/` — torch.distributed.checkpoint.load_state_dict
+- `test/_ProcessGroupNCCL_Options/` — torch.distributed.ProcessGroupNCCL.Options
+- `test/_PrefixStore/`（已存在，本批未改动）— `torch.distributed.PrefixStore`
 
-### 跳过用例分析
-
-**无跳过用例。** 所有测试在 8 卡 NPU 环境下满足 `@skipIfUnsupportMultiNPU(2)` 条件，RPC 环境可用，无任何 skip 路径触发。
-
-### 修复记录
-
-| # | 问题 | 影响文件 | 修复方案 |
-|---|------|----------|----------|
-| 1 | `ImportError: cannot import name 'BytesIOWriteData'` | checkpoint_planner_WriteItem_tensor_storage_size | 删除该导入；BYTE_IO WriteItem 改用 `tensor_data=None` 构造 |
-| 2 | `DefaultLoadPlanner.resolve_bytes` 抛 `NotImplementedError` 而非返回 BytesIO | checkpoint_LoadPlanner_resolve_bytes | 调整测试：验证基类抛异常，增加自定义子类覆盖测试 |
-| 3 | `dist.broadcast` 与 ZeRO 内部通信冲突导致 SIGSEGV | optim_ZeroRedundancyOptimizer_step | 删除 broadcast 调用，改用 `manual_seed(42)` 初始化；仅验证 shape/dtype |
-| 4 | Gloo `connectFullMesh failed`（DistributedOptimizer RPC 环境） | optim_DistributedOptimizer / step | 添加 `GLOO_SOCKET_IFNAME=lo` 环境变量 |
-
-### 本批次新增文件
-
-```
-test/checkpoint_planner_WriteItem_tensor_storage_size/test_checkpoint_planner_WriteItem_tensor_storage_size.py
-test/checkpoint_format_utils_DynamicMetaLoadPlanner_set_up_planner/test_checkpoint_format_utils_DynamicMetaLoadPlanner_set_up_planner.py
-test/checkpoint_LoadPlanner_resolve_tensor/test_checkpoint_LoadPlanner_resolve_tensor.py
-test/checkpoint_LoadPlanner_commit_tensor/test_checkpoint_LoadPlanner_commit_tensor.py
-test/checkpoint_LoadPlanner_load_bytes/test_checkpoint_LoadPlanner_load_bytes.py
-test/checkpoint_LoadPlanner_resolve_bytes/test_checkpoint_LoadPlanner_resolve_bytes.py
-test/checkpoint_SavePlanner_resolve_data/test_checkpoint_SavePlanner_resolve_data.py
-test/optim_PostLocalSGDOptimizer/test_optim_PostLocalSGDOptimizer.py
-test/optim_PostLocalSGDOptimizer_step/test_optim_PostLocalSGDOptimizer_step.py
-test/optim_ZeroRedundancyOptimizer/test_optim_ZeroRedundancyOptimizer.py
-test/optim_ZeroRedundancyOptimizer_step/test_optim_ZeroRedundancyOptimizer_step.py
-test/optim_DistributedOptimizer/test_optim_DistributedOptimizer.py
-test/optim_DistributedOptimizer_step/test_optim_DistributedOptimizer_step.py
-test/tensor_ones/test_tensor_ones.py
-test/tensor_zeros/test_tensor_zeros.py
-test/tensor_full/test_tensor_full.py
-test/tensor_rand/test_tensor_rand.py
-test/tensor_randn/test_tensor_randn.py
-```
-
----
-
-## 累计测试统计
-
-| 类别 | 数量 |
-|-----|------|
-| 测试 API 总数 | 45 |
-| 测试文件数 | 28 |
-| 测试方法总数 | 174 |
-| 需 2 卡测试方法 | 148 |
-| 需 4 卡测试方法 | 10 |
-| 单进程测试方法 | 16 |
-
-## 文件列表（历史批次）
-
-```
-test/fsdp_FSDPModule_methods/test_fsdp_FSDPModule_methods.py
-test/fsdp_FullyShardedDataParallel_methods/test_fsdp_FullyShardedDataParallel_methods.py
-test/tensor_parallel_PrepareModuleOutput/test_tensor_parallel_PrepareModuleOutput.py
-test/tensor_placement_types_Partial/test_tensor_placement_types_Partial.py
-test/distributed_c10d_split_group/test_distributed_c10d_split_group.py
-test/distributed_c10d_new_subgroups/test_distributed_c10d_new_subgroups.py
-test/_fsdp_FSDPModule/test__fsdp_FSDPModule.py
-test/_tensor_DTensor_to_local/test__tensor_DTensor_to_local.py
-test/distributed_c10d_ProcessGroupXCCL/test_distributed_c10d_ProcessGroupXCCL.py
-test/distributed_c10d_reinit_process_group/test_distributed_c10d_reinit_process_group.py
-test/UT_EXECUTION_REPORT.md
-```
-
----
-
-报告最后更新: 2026-04-10
+注意：本次未触及 `pytorch/`、`ascend_pytorch/` 内任何源码，仅在 `test/` 下新增/修改 UT 文件。
